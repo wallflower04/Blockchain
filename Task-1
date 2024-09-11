@@ -1,0 +1,229 @@
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract TodoList
+{
+    enum Priority {low, medium, high}
+    uint public taskCount=0;
+    uint[] public taskId;
+    struct Task
+    {
+        uint id;
+        string content;
+        bool completed;
+        Priority priority;
+        string category;
+        uint duedate;
+    }
+    mapping(uint => Task) public tasks;
+
+    event TaskCreated(uint id, string content, Priority priority, string category, uint duedate);
+    event TaskDeleted(uint id);
+    event TaskCompleted(uint id);
+    event TaskEdited(uint id, string newContent);
+    event TaskPrioritySet(uint _id, Priority _priority);
+    event TaskCategorySet(uint _id, string _category);
+    event TaskDueDateSet(uint id, uint duedate);
+
+    function createTask(string memory _content, Priority _priority, string memory _category, uint _duedate) public
+    {
+        taskCount++;
+        tasks[taskCount] = Task(taskCount, _content, false, _priority, _category, _duedate);
+        taskId.push(taskCount);
+        emit TaskCreated(taskCount, _content, _priority, _category, _duedate);
+    }
+
+    function getTask(uint _id) public view returns(string memory content, bool completed, Priority priority, string memory category, uint duedate)
+    {
+        return (tasks[_id].content, tasks[_id].completed, tasks[_id].priority, tasks[_id].category, tasks[_id].duedate);
+    }
+
+    function getallTasks() public view returns(Task[] memory)
+    {
+        Task[] memory allTasks = new Task[](taskId.length);
+        for (uint i = 0; i < taskId.length; i++) 
+        {
+            allTasks[i] = tasks[taskId[i]];
+        }
+        return allTasks;
+    }
+
+    function deleteTask(uint _id) public 
+    {
+        delete tasks[_id];
+        for (uint i = 0; i<taskId.length; i++)
+        {
+            if (taskId[i] == _id)
+            {
+                taskId[i] = taskId[taskId.length - 1];
+                taskId.pop();
+                break;
+            }
+        }
+        emit TaskDeleted(_id);
+        taskCount--;
+    }
+
+    function deleteAllTasks() public
+    {
+        for (uint i = 0; i<taskId.length; i++)
+        {
+            delete tasks[taskId[i]];
+        }
+        delete taskId;
+        taskCount = 0;
+    }
+
+    function completeTask(uint _id) public
+    {
+        tasks[_id].completed = true;
+        emit TaskCompleted(_id);
+    }
+
+    function editTask(uint _id, string memory _newcontent) public
+    {
+        tasks[_id].content = _newcontent;
+        emit TaskEdited(_id, _newcontent);
+    }
+
+    function setTaskPriority(uint _id, Priority _priority) public
+    {
+        tasks[_id].priority = _priority;
+        emit TaskPrioritySet(_id, _priority);
+    }
+
+    function viewTaskByPriority(Priority _priority) public view returns(Task[] memory)
+    {
+        uint count = 0;
+        for (uint i = 0; i<taskId.length; i++) 
+        {
+            if (tasks[taskId[i]].priority == _priority) 
+            {
+                count++;
+            }
+        }
+        Task[] memory tasksByPriority = new Task[](count);
+        count = 0;
+        for (uint i = 0; i < taskId.length; i++)
+        {
+            if (tasks[taskId[i]].priority == _priority) 
+            {
+                tasksByPriority[count++] = tasks[taskId[i]];
+            }
+        }
+        return tasksByPriority;
+    }
+
+    function viewAllTaskByPriority() public view returns(Task[] memory)
+    {
+        Task[] memory allTasks = getallTasks();
+        for (uint i = 0; i < allTasks.length - 1; i++)
+        {
+            for (uint j = 0; j < allTasks.length - i - 1; j++)
+            {
+                if (allTasks[j].priority > allTasks[j + 1].priority)
+                {
+                    Task memory temp = allTasks[j];
+                    allTasks[j] = allTasks[j + 1];
+                    allTasks[j + 1] = temp;
+                }
+            }
+        }
+        return allTasks;        
+    }
+
+    function viewTaskByStatus(bool _completed) public view returns(Task[] memory)
+    {
+        uint count = 0;
+        for (uint i = 0; i<taskId.length; i++) 
+        {
+            if (tasks[taskId[i]].completed == _completed) 
+            {
+                count++;
+            }
+        }
+        Task[] memory tasksByStatus = new Task[](count);
+        count = 0;
+        for (uint i = 0; i < taskId.length; i++)
+        {
+            if (tasks[taskId[i]].completed == _completed) 
+            {
+                tasksByStatus[count++] = tasks[taskId[i]];
+            }
+        }
+        return tasksByStatus;
+    }
+
+    function setTaskCategory(uint _id, string memory _category) public
+    {
+        tasks[_id].category = _category;
+        emit TaskCategorySet(_id, _category);
+    }
+
+    function viewTaskByCategory(string memory _category) public view returns(Task[] memory) 
+    {
+        uint count = 0;
+        for (uint i = 0; i<taskId.length; i++) 
+        {
+            if (keccak256(bytes(tasks[taskId[i]].category)) == keccak256(bytes(_category)))
+            {
+                count++;
+            }
+        }
+        Task[] memory tasksByCategory = new Task[](count);
+        count = 0;
+        for (uint i = 0; i < taskId.length; i++)
+        {
+            if (keccak256(bytes(tasks[taskId[i]].category)) == keccak256(bytes(_category)))
+            {
+                tasksByCategory[count++] = tasks[taskId[i]];
+            }
+        }
+        return tasksByCategory;
+    }
+
+    function setDueDate(uint _id, uint _duedate) public
+    {
+        tasks[_id].duedate = _duedate;
+        emit TaskDueDateSet(_id, _duedate);
+    }
+
+    function taskCountByStatus(bool _completed) public view returns(uint count)
+    {
+        count = 0;
+        for (uint i = 0; i<taskId.length; i++) 
+        {
+            if (tasks[taskId[i]].completed == _completed) 
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    function taskCountByPriority(Priority _priority) public view returns(uint count) 
+    {
+        count = 0;
+        for (uint i = 0; i<taskId.length; i++)
+        {
+            if (tasks[taskId[i]].priority == _priority)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    function taskCountByCategory(string memory _category) public view returns(uint count) 
+    {
+        count = 0;
+        for (uint i = 0; i<taskId.length; i++)
+        {
+            if (keccak256(bytes(tasks[taskId[i]].category)) == keccak256(bytes(_category)))
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+}
